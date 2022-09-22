@@ -2,13 +2,18 @@ package com.nttdata.msbankmovements.controllers;
 
 import com.nttdata.msbankmovements.entity.Movimiento;
 import com.nttdata.msbankmovements.services.IMovimientoService;
+import com.nttdata.msbankmovements.util.Reporte;
+import com.nttdata.msbankmovements.util.Transaction;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
+import javax.ws.rs.QueryParam;
 import java.util.List;
 
 @RestController
@@ -40,17 +45,18 @@ public class MovimientoController {
         return new ResponseEntity<Movimiento>(movimiento, HttpStatus.OK);
     }
 
-    @PostMapping
-    public ResponseEntity<Movimiento> save(@PathVariable("clienteId") Integer clienteId, @RequestBody Movimiento movimiento){
+    @PostMapping("/{numeroCuenta}")
+    @CircuitBreaker(name="cuenta", fallbackMethod = "fallBackCuenta")
+    public ResponseEntity<Object> save(@PathVariable("numeroCuenta") String numeroCuenta, @RequestBody Transaction transaction){
         log.info("[INI] save Movimiento");
 
-        Movimiento p = movimientoService.save(clienteId, movimiento);
+        ResponseEntity<Object> p = movimientoService.save(numeroCuenta, transaction);
 
         log.info("[END] save Movimiento");
-        return new ResponseEntity<Movimiento>(p, HttpStatus.CREATED);
+        return p;
     }
 
-    @PutMapping
+    @PutMapping("/{id}")
     public ResponseEntity<Object> update(@PathVariable("id") Integer id, @RequestBody Movimiento movimiento){
         log.info("[INI] update Movimiento " + id);
 
@@ -73,5 +79,22 @@ public class MovimientoController {
 
         log.info("[END] delete Movimiento " + id);
         return new ResponseEntity<Object>(HttpStatus.NO_CONTENT);
+    }
+
+    @GetMapping("/reportes/{clienteId}")
+    @CircuitBreaker(name="cuenta", fallbackMethod = "fallBackCuenta")
+    public ResponseEntity<Object> reporteByFechaAndUsuario(@PathVariable("clienteId") Integer clienteId
+            , @RequestParam("fechaInicio") String fechaInicio
+            , @RequestParam("fechaFin") String fechafin){
+        log.info("[INI] reporteByFechaAndUsuario Movimiento " + clienteId + " , fechaInicio= "+ fechaInicio + " , fechaFin= "+fechafin);
+
+        List<Reporte> reportes = movimientoService.reporteByFechaAndUsuario(clienteId, fechaInicio, fechafin);
+
+        log.info("[END] reporteByFechaAndUsuario Movimiento " + clienteId + " , fechaInicio= "+ fechaInicio + " , fechaFin= "+fechafin);
+        return new ResponseEntity<Object>(reportes, HttpStatus.OK);
+    }
+
+    public ResponseEntity<Object> fallBackCuenta(RuntimeException runtimeException){
+        return new ResponseEntity<Object>("Microservicio externo no responde. /n error: "+runtimeException.getMessage(), HttpStatus.BAD_REQUEST);
     }
 }

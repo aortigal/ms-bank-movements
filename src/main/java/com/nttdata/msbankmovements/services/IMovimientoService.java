@@ -1,12 +1,15 @@
 package com.nttdata.msbankmovements.services;
 
 import com.nttdata.msbankmovements.entity.Movimiento;
+import com.nttdata.msbankmovements.util.Reporte;
+import com.nttdata.msbankmovements.util.Transaction;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
 public interface IMovimientoService {
 
-    Movimiento save(Integer clienteId, Movimiento movimiento);
+    ResponseEntity<Object> save(String numeroCuenta, Transaction transaction);
 
     Movimiento update(Integer id, Movimiento movimiento);
 
@@ -16,4 +19,5 @@ public interface IMovimientoService {
 
     boolean delete(Integer id);
 
+    List<Reporte> reporteByFechaAndUsuario(Integer clienteId, String fechaInicio, String fechafin);
 }

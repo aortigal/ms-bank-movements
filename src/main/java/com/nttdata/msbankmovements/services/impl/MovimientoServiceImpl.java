@@ -1,16 +1,27 @@
 package com.nttdata.msbankmovements.services.impl;
 
+import com.nttdata.msbankmovements.entity.Cuenta;
 import com.nttdata.msbankmovements.entity.Movimiento;
 import com.nttdata.msbankmovements.repository.IMovimientoRepository;
 import com.nttdata.msbankmovements.services.ICuentaService;
 import com.nttdata.msbankmovements.services.IMovimientoService;
+import com.nttdata.msbankmovements.util.Reporte;
+import com.nttdata.msbankmovements.util.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class MovimientoServiceImpl implements IMovimientoService {
@@ -25,12 +36,34 @@ public class MovimientoServiceImpl implements IMovimientoService {
 
 
     @Override
-    public Movimiento save(Integer clienteId, Movimiento movimiento) {
+    public ResponseEntity<Object> save(String numeroCuenta, Transaction transaction) {
+        ResponseEntity<Cuenta> c= cuentaService.fingByNumeroCuenta(numeroCuenta);
+        if(c.getStatusCode().is2xxSuccessful()){
+            Cuenta cuenta = c.getBody();
+            Double saldoDisponible = 0.0;
+            saldoDisponible = cuenta.getSaldoInicial() + transaction.getMovimiento();
 
-        if(movimiento.getMovimiento() >= Double.MIN_VALUE){
+            if(saldoDisponible < 0){
+                    return new ResponseEntity<Object>("Saldo no disponible.", HttpStatus.BAD_REQUEST);
+            }
 
+            Movimiento movimiento = new Movimiento();
+            movimiento.setTipo(transaction.getTipo());
+            movimiento.setMovimiento(transaction.getMovimiento());
+            movimiento.setCuenta(cuenta);
+            movimiento.setFecha(LocalDateTime.now());
+            movimiento.setSaldoDisponible(saldoDisponible);
+            movimientoRepository.save(movimiento);
+
+            cuenta.setSaldoInicial(saldoDisponible);
+            cuentaService.update(cuenta.getCuentaid(),cuenta);
+
+            return new ResponseEntity<Object>(movimiento, HttpStatus.CREATED);
+
+        }else{
+            return new ResponseEntity<Object>("La cuenta no existe.", HttpStatus.BAD_REQUEST);
         }
-        return movimientoRepository.save(movimiento);
+
     }
 
     @Override
@@ -60,5 +93,57 @@ public class MovimientoServiceImpl implements IMovimientoService {
     public boolean delete(Integer id) {
         movimientoRepository.deleteById(id);
         return true;
+    }
+
+    @Override
+    public List<Reporte> reporteByFechaAndUsuario(Integer clienteId, String fechaInicio, String fechafin) {
+
+        ResponseEntity<List<Cuenta>> response = cuentaService.fingByCliente(clienteId);
+
+        if(response.getStatusCode().is2xxSuccessful()){
+            log.info("response status "+ response.getStatusCodeValue());
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+            LocalDate localDateIni = LocalDate.parse(fechaInicio, formatter);
+
+            LocalDate localDateEnd = LocalDate.parse(fechafin, formatter);
+
+            LocalDateTime localDateTimeIni = LocalDateTime.of(localDateIni, LocalTime.MIN);
+
+            LocalDateTime localDateTimeEnd = LocalDateTime.of(localDateEnd, LocalTime.MAX);
+
+            List<Reporte> reportes= new ArrayList<>();
+
+            log.info("busqueda por rango");
+            for (Cuenta cuenta: response.getBody()){
+                movimientoRepository.findAll().stream().filter(
+                        movimiento -> {
+                            if(movimiento.getCuenta().getCuentaid() == cuenta.getCuentaid() &&
+                                    movimiento.getFecha().isAfter(localDateTimeIni)
+                                    && movimiento.getFecha().isBefore(localDateTimeEnd)){
+                                return true;
+                            }
+                            return false;
+                        }).forEach(movmientos ->{
+                            log.info(movmientos.toString());
+                            Reporte reporte= new Reporte();
+                            reporte.setCliente(cuenta.getCliente().getNombres());
+                            reporte.setNumeroCuenta(cuenta.getNumero());
+                            reporte.setMovimiento(movmientos.getMovimiento());
+                            reporte.setFecha(movmientos.getFecha().toString());
+                            reporte.setTipo(movmientos.getTipo().name());
+                            reporte.setSaldoDisponible(movmientos.getSaldoDisponible());
+                            reporte.setSaldoInicial(cuenta.getSaldoInicial());
+                            reporte.setEstado(cuenta.isEstado());
+                            reportes.add(reporte);
+                    });
+
+
+            }
+            log.info("reportes sixe " + reportes.size());
+            return reportes;
+        }
+        log.info("No se encontro cuentas ." );
+        return null;
     }
 }
