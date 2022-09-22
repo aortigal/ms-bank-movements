@@ -8,7 +8,7 @@ public interface IMovimientoService {
 
     Movimiento save(Movimiento movimiento);
 
-    Movimiento update(Movimiento movimiento);
+    Movimiento update(Integer id, Movimiento movimiento);
 
     List<Movimiento> getListAll();
 
