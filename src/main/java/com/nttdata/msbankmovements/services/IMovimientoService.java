@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface IMovimientoService {
 
-    Movimiento save(Movimiento movimiento);
+    Movimiento save(Integer clienteId, Movimiento movimiento);
 
     Movimiento update(Integer id, Movimiento movimiento);
 

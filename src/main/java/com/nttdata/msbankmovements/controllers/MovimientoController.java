@@ -41,10 +41,10 @@ public class MovimientoController {
     }
 
     @PostMapping
-    public ResponseEntity<Movimiento> save(@RequestBody Movimiento movimiento){
+    public ResponseEntity<Movimiento> save(@PathVariable("clienteId") Integer clienteId, @RequestBody Movimiento movimiento){
         log.info("[INI] save Movimiento");
 
-        Movimiento p = movimientoService.save(movimiento);
+        Movimiento p = movimientoService.save(clienteId, movimiento);
 
         log.info("[END] save Movimiento");
         return new ResponseEntity<Movimiento>(p, HttpStatus.CREATED);

@@ -2,6 +2,7 @@ package com.nttdata.msbankmovements.services.impl;
 
 import com.nttdata.msbankmovements.entity.Movimiento;
 import com.nttdata.msbankmovements.repository.IMovimientoRepository;
+import com.nttdata.msbankmovements.services.ICuentaService;
 import com.nttdata.msbankmovements.services.IMovimientoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,11 +18,18 @@ public class MovimientoServiceImpl implements IMovimientoService {
     @Autowired
     private IMovimientoRepository movimientoRepository;
 
+    @Autowired
+    private ICuentaService cuentaService;
+
     private static final Logger log = LoggerFactory.getLogger(MovimientoServiceImpl.class);
 
 
     @Override
-    public Movimiento save(Movimiento movimiento) {
+    public Movimiento save(Integer clienteId, Movimiento movimiento) {
+
+        if(movimiento.getMovimiento() >= Double.MIN_VALUE){
+
+        }
         return movimientoRepository.save(movimiento);
     }
 
