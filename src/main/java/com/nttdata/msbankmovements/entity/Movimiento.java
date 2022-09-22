@@ -35,4 +35,8 @@ public class Movimiento {
 
     @Column(name = "saldo_disponible", nullable = false)
     private Double saldoDisponible;
+
+    @ManyToOne
+    @JoinColumn(name = "cuenta_id", nullable = false, foreignKey =@ForeignKey(name = "fk_movimiento_cuenta"))
+    private Cuenta cuenta;
 }
